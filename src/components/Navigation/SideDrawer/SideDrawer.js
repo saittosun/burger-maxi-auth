@@ -23,7 +23,7 @@ const sideDrawer = (props) => {//return something will not be the jsx code immed
           <Logo  />
         </div>
         <nav>
-          <NavigationItems />
+          <NavigationItems isAuthenticated={props.isAuth} />
         </nav>
       </div>
     </Aux>
