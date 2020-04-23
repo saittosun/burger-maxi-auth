@@ -26,6 +26,11 @@ export const authFail = (error) => {
 }
 
 export const logout = () => {
+  // because both is not needed anymore and shouldn't be stored any more, we aren't loged in anymore so the token will not be valid in the future. 
+  // now let's fetch the token when we login, where can we check this? Well we should check it when the application loads, so for example in app.js this is the root component of our app and it's always loaded, no matter which route we visit so therefore this makes for a great app to check our authentication status. For checking this, we will need a new action creator 
+  localStorage.removeItem('token');
+  localStorage.removeItem('expirationDate');
+  localStorage.removeItem('userId');
   return {
     type: actionTypes.AUTH_LOGOUT
   }
@@ -59,6 +64,14 @@ export const auth = (email, password, isSignup) => {
       .post(url, authData)
       .then(response => {
         console.log(response);
+        //  this gives us the expiration time but to turn this into a date object again, we have to wrap all of that with new date. So new date without arguments(ikincisi) gives us the current date, new date with arguments(birincisi) gives us a date with the date we passed as an argument, so here this will be the current date plus expiry time in seconds. So this is how that works,
+        // now we can store expiration date in our local storage too whenever we acquire a token.
+        const expirationDate = new Date(new Date().getTime() + response.data.expiresIn * 1000)
+        // we can call setItem on it to store an item in the local storage, the item I want to store is my token let's say and that's just the key by which we can fetch it. The second argument to setItem is the actual item and this is response data ID token, 
+        localStorage.setItem('token', response.data.idToken);
+        // that's nice but the token alone won't be that useful if we fetch it in the future, we also need to know when it expires. So I'll store something else, setItem and I could store expiresIn but that's just the amount of seconds until it's invalid, that won't tell us much the next time we fetch this from local storage because the number of course won't update. So instead we should store the expiration date, so expiration date and the value should be the expiration date, now I'm going to calculate this and store it in a separate constant
+        localStorage.setItem('expirationDate', expirationDate);
+        localStorage.setItem('userId', response.data.localId)
         dispatch(authSuccess(response.data.idToken, response.data.localId));
         // I will dispatch this checkAuthTimeout action when we get back a success response
         dispatch(checkAuthTimeout(response.data.expiresIn));
@@ -74,6 +87,26 @@ export const setAuthRedirectPath = (path) => {
   return {
     type: actionTypes.SET_AUTH_REDIRECT_PATH,
     path: path
+  }
+}
+
+//with that, we can dispatch authCheckState to successfully automatically log the user in if we have a valid token.
+export const authCheckState = () => {
+  return dispatch => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      dispatch(logout());
+    } else {
+      const expirationDate = localStorage.getItem('expirationDate');
+      if (expirationDate <= new Date()) {
+        dispatch(logout());
+      } else {
+        const userId = localStorage.getItem('userId');
+        dispatch(authSuccess(token, userId));
+        // the difference of course is the expiry date, the expiry time in seconds I mean.
+        dispatch(checkAuthTimeout((expirationDate.getTime() - new Date().getTime())/1000));
+      }
+    }
   }
 }
 
