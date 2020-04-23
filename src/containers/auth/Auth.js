@@ -46,6 +46,15 @@ class Auth extends Component {
     isSignup: true
   }
 
+  // I have to make sure that I actually reset the path if we reach this page whilst not building a burger and that is what we do in componentDidMount.
+  componentDidMount() {
+    // that means we're trying to redirect to checkout even though we're not building a burger.
+    if (!this.props.buildingBurger && this.props.authRedirectPath !== '/') {
+      // I don't need to pass an argument here because we already set this up to always pass / at the bottom of our component to the action creator
+      this.props.onSetRedirectPath();
+    }
+  }
+
   checkValidity(value, rules) {
     let isValid = true; 
     // We can of course also implement both for double security but again, I like the approach up here by adding this empty validation object the most because it makes all the controls configured equally.
@@ -144,7 +153,8 @@ class Auth extends Component {
 
     let authRedirect = null;
     if (this.props.isAuthenticated) {
-      authRedirect = <Redirect to="/"/>
+      // I have to make sure that I actually reset the path if we reach this page whilst not building a burger and that is what we do in componentDidMount.
+      authRedirect = <Redirect to={this.props.authRedirectPath}/>
     }
 
     return (
@@ -176,14 +186,19 @@ const mapStateToProps = state => {
     // the loading property we set up in our auth reducers state,(buradaki initialState deki property ile ayni)
     loading: state.auth.loading,
     error: state.auth.error,
-    isAuthenticated: state.auth.token !== null
+    isAuthenticated: state.auth.token !== null,
+    // if you're not sure about the name of the slice, always check your index.js file, there you are combining your reducer and it's this property you are looking for. So burger builder is our slice name and there, we got this building prop.
+    buildingBurger: state.burgerBuilder.building,
+    authRedirectPath: state.auth.authRedirectPath
   }
 }
 
 const mapDispatchToProps = dispatch => {
   return {
     // With that, we can execute onAuth on our props in this container and I want to do this whenever the form is submitted.
-    onAuth: (email, password, isSignup) => dispatch(actions.auth(email, password, isSignup))
+    onAuth: (email, password, isSignup) => dispatch(actions.auth(email, password, isSignup)),
+    //  we just hard code / in here because if I call this action from within that component, I always want to reset it back to its basic form.
+    onSetRedirectPath: () => dispatch(actions.setAuthRedirectPath('/'))
   }
 }
 
